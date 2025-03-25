@@ -29,7 +29,7 @@ import {
   IonButton 
 } from '@ionic/vue';
 import { collection, getDocs } from 'firebase/firestore';
-import Map from '~/components/Map.vue';
+import Map from '~/components/Map.vue'
 
 const { $firestore } = useNuxtApp();
 

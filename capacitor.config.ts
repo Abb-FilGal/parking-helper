@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
     appId: "io.parking.finder",
     appName: "Parking Finder",
     webDir: ".output/public",
-    bundledWebRuntime: false,
     plugins: {
         SplashScreen: {
             launchShowDuration: 3000,
