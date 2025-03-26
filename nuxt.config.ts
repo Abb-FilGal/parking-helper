@@ -7,8 +7,8 @@ export default defineNuxtConfig({
 
   ionic: {
     integrations: {
-      // Enable Capacitor integration
-      capacitor: true,
+      // Enable router integration
+      router: true,
     },
     css: {
       // Include Ionic CSS
@@ -28,8 +28,18 @@ export default defineNuxtConfig({
       FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
       FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
+
+      // Add Cloudinary config
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET,
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
     },
   },
+
+  plugins: [
+    "~/plugins/firebase.client.ts",
+  ],
 
   compatibilityDate: "2025-03-25"
 })

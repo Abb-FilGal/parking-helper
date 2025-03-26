@@ -14,13 +14,6 @@ import { IonSpinner } from '@ionic/vue';
 const mapElement = ref(null);
 const loading = ref(true);
 
-// Mock parking spots data (replace with Firebase data later)
-const mockParkingSpots = [
-  { id: 1, lat: 37.7749, lng: -122.4194, name: 'Downtown Parking', available: 5 },
-  { id: 2, lat: 37.7694, lng: -122.4862, name: 'Beach Parking', available: 2 },
-  { id: 3, lat: 37.8199, lng: -122.4783, name: 'Golden Gate Parking', available: 10 }
-];
-
 onMounted(() => {
   // Simulate loading
   setTimeout(() => {
