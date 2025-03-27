@@ -20,6 +20,7 @@ export default defineNuxtConfig({
   // Make sure you don't have any custom routing configurations here
   // that might override the default behavior
   runtimeConfig: {
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
     // Public keys that are exposed to the client
     public: {
       FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
@@ -33,7 +34,6 @@ export default defineNuxtConfig({
       CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
       CLOUDINARY_UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET,
       CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
-      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
     },
   },
 

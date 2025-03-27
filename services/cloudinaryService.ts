@@ -8,7 +8,7 @@ export const useCloudinaryService = () => {
     const uploadError = ref<string | null>(null)
 
     const uploadImage = async (file: File, folder = 'parking-spots') => {
-        if (!$cloudinaryConfig.cloudName || !$cloudinaryConfig.uploadPreset) {
+        if (!$cloudinaryConfig.cloudName) {
             throw new Error('Cloudinary configuration is missing')
         }
 
@@ -24,14 +24,25 @@ export const useCloudinaryService = () => {
         uploadError.value = null
 
         try {
+            // Step 1: Get the signature from the server
+            const timestamp = Math.floor(Date.now() / 1000) // Current timestamp in seconds
+            const signatureResponse = await fetch(`/api/cloudinary-signature?folder=${folder}&timestamp=${timestamp}`)
+            const { signature, apiKey, cloudName } = await signatureResponse.json()
+
+            if (!signature) {
+                throw new Error('Failed to get signature from server')
+            }
+
+            // Step 2: Prepare the form data
             const formData = new FormData()
             formData.append('file', file)
-            formData.append('upload_preset', $cloudinaryConfig.uploadPreset)
             formData.append('folder', folder)
+            formData.append('api_key', apiKey)
+            formData.append('timestamp', timestamp.toString())
+            formData.append('signature', signature)
 
-            console.log('FormData:', formData)
-
-            const response = await fetch(`https://api.cloudinary.com/v1_1/${$cloudinaryConfig.cloudName}/image/upload`, {
+            // Step 3: Upload the file to Cloudinary
+            const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
                 method: 'POST',
                 body: formData
             })
