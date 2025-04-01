@@ -41,5 +41,7 @@ export default defineNuxtConfig({
     "~/plugins/firebase.client.ts",
   ],
 
-  compatibilityDate: "2025-03-25"
+  compatibilityDate: "2025-03-25",
+
+  css: ['leaflet/dist/leaflet.css']
 })

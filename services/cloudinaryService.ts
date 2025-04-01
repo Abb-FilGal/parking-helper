@@ -7,17 +7,10 @@ export const useCloudinaryService = () => {
     const uploadProgress = ref(0)
     const uploadError = ref<string | null>(null)
 
-    const uploadImage = async (file: File, folder = 'parking-spots') => {
+    const uploadImage = async (file: File, folder: string) => {
         if (!$cloudinaryConfig.cloudName) {
             throw new Error('Cloudinary configuration is missing')
         }
-
-        console.log('Cloudinary Config:', $cloudinaryConfig)
-        console.log('File:', file)
-        if (!file || !(file instanceof File)) {
-            throw new Error('Invalid file provided for upload')
-        }
-        console.log('Folder:', folder)
 
         isUploading.value = true
         uploadProgress.value = 0

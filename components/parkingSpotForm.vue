@@ -11,7 +11,7 @@
             <ion-input v-model="form.address" required></ion-input>
         </ion-item>
         
-        <!-- <ion-item>
+        <ion-item>
             <ion-label position="floating">Tags</ion-label>
             <ion-input 
                 v-model="tagsInput" 
@@ -24,7 +24,7 @@
                 <ion-icon name="close-circle" @click="removeTag(index)"></ion-icon>
             </ion-chip>
         </div>
-        </ion-item> -->
+        </ion-item>
         
         <ion-item>
             <ion-label position="floating">Price per Hour</ion-label>
@@ -35,6 +35,15 @@
             </ion-select>
         </ion-item>
         
+        <Map 
+            :latitude="form.latitude" 
+            :longitude="form.longitude" 
+            :address="form.address"
+            @update:latitude="form.latitude = $event" 
+            @update:longitude="form.longitude = $event"
+            @update:address="form.address = $event"
+        ></Map>
+
         <ion-item>
             <ion-label position="floating">Latitude</ion-label>
             <ion-input v-model.number="form.latitude" type="number" step="0.000001" required></ion-input>
@@ -46,22 +55,23 @@
         </ion-item>
         
         <div class="image-upload-container">
-            <div class="image-preview" v-if="imagePreview || form.imageUrl">
-                <img :src="imagePreview || form.imageUrl" alt="Parking spot preview">
-                <ion-button fill="clear" class="remove-image-btn" @click="removeImage">
+            <div v-for="(image, index) in form.imageUrls" :key="index" class="image-preview">
+                <img :src="image.preview || image.url" alt="Parking spot preview">
+                <ion-button fill="clear" class="remove-image-btn" @click="removeImage(index)">
                     <ion-icon :icon="closeCircleOutline"></ion-icon>
                 </ion-button>
             </div>
-            
-            <ion-button expand="block" @click="triggerFileInput" v-if="!imagePreview && !form.imageUrl">
+
+            <ion-button expand="block" @click="triggerFileInput">
                 <ion-icon :icon="cameraOutline" slot="start"></ion-icon>
-                Upload Image
+                Upload Images
             </ion-button>
-            
+
             <input 
                 type="file" 
                 ref="fileInput" 
                 accept="image/*" 
+                multiple 
                 style="display: none" 
                 @change="handleFileChange"
             >
@@ -87,6 +97,9 @@
 import { ref, reactive, onMounted } from 'vue';
 import { cameraOutline, closeCircleOutline } from 'ionicons/icons';
 import { useCloudinaryService } from '~/services/cloudinaryService';
+import { collection, doc, addDoc, updateDoc, GeoPoint } from 'firebase/firestore';
+import { useNuxtApp } from '#app';
+import Map from '~/components/Map.vue';
 
 const props = defineProps({
     parkingSpot: {
@@ -98,7 +111,7 @@ const props = defineProps({
             pricePerHour: '',
             latitude: 0,
             longitude: 0,
-            imageUrl: ''
+            imageUrls: []
         })
     },
     isEditing: {
@@ -123,7 +136,7 @@ const form = reactive({
     pricePerHour: '',
     latitude: 0,
     longitude: 0,
-    imageUrl: ''
+    imageUrls: []
 });
 
 // Initialize form with parking spot data if editing
@@ -137,51 +150,94 @@ onMounted(() => {
     }
 });
 
+// Tags input and methods
+const tagsInput = ref('');
+
+const addTag = () => {
+    const tag = tagsInput.value.trim();
+    if (tag && !form.tags.includes(tag)) {
+        form.tags.push(tag);
+    }
+    tagsInput.value = ''; // Clear the input after adding the tag
+};
+
+const removeTag = (index) => {
+    form.tags.splice(index, 1);
+};
+
 const triggerFileInput = () => {
     fileInput.value.click();
 };
 
 const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    imageFile.value = file;
-    
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        imagePreview.value = e.target.result;
-    };
-    reader.readAsDataURL(file);
-};
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-const removeImage = () => {
-    imageFile.value = null;
-    imagePreview.value = null;
-    form.imageUrl = '';
+    Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            form.imageUrls.push({
+                file,
+                preview: e.target.result // Store the preview for display
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Clear the file input to allow re-uploading the same file
     if (fileInput.value) {
         fileInput.value.value = '';
     }
 };
 
+const removeImage = (index) => {
+    form.imageUrls.splice(index, 1);
+};
+
 const handleSubmit = async () => {
     isSubmitting.value = true;
-    
+
     try {
-        let imageUrl = form.imageUrl;
-        
-        // Upload image if a new one was selected
-        if (imageFile.value) {
-            const uploadResult = await uploadImage(imageFile.value);
-            imageUrl = uploadResult.secure_url;
+        const { $firestore } = useNuxtApp(); // Use Firestore instance from Nuxt plugin
+        const uploadedImageUrls = [];
+
+        // Generate a unique folder name for this upload
+        const folderName = `parking-spots/${form.name}-${Date.now()}`;
+
+        // Upload all selected images to the same folder
+        for (const image of form.imageUrls) {
+            if (image.file) {
+                const uploadResult = await uploadImage(image.file, folderName);
+                if (uploadResult.error) {
+                    throw new Error(uploadResult.error);
+                }
+                uploadedImageUrls.push(uploadResult.secure_url);
+            } else {
+                // If the image already has a URL (e.g., during editing), keep it
+                uploadedImageUrls.push(image.url);
+            }
         }
-        
+
         // Create the final parking spot object
         const parkingSpot = {
             ...form,
-            imageUrl
+            imageUrls: uploadedImageUrls, // Store all uploaded image URLs
+            location: new GeoPoint(form.latitude, form.longitude)
         };
-        
+
+        delete parkingSpot.latitude; // Remove latitude and longitude from the object
+        delete parkingSpot.longitude;
+
+        if (props.isEditing) {
+            // Update existing parking spot
+            const parkingSpotRef = doc($firestore, 'parkingSpots', props.parkingSpot.id);
+            await updateDoc(parkingSpotRef, parkingSpot);
+        } else {
+            // Add new parking spot
+            const parkingSpotsCollection = collection($firestore, 'parkingSpots');
+            await addDoc(parkingSpotsCollection, parkingSpot);
+        }
+
         emit('submit', parkingSpot);
         console.log('Form submitted:', parkingSpot);
     } catch (error) {
