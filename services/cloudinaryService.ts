@@ -58,9 +58,16 @@ export const useCloudinaryService = () => {
 
     // Helper function to get optimized Cloudinary URL
     const getOptimizedUrl = (publicId: string, options: Record<string, any> = {}) => {
+        const { $cloudinaryConfig } = useNuxtApp() // Access Cloudinary config from Nuxt runtime
+
+        // If the publicId is already a full URL, return it as-is
+        if (publicId.startsWith('http://') || publicId.startsWith('https://')) {
+            return publicId
+        }
+
         const defaultOptions = {
             width: 300,
-            height: 200,
+            height: 300,
             crop: 'fill',
             quality: 'auto',
             fetch_format: 'auto'

@@ -8,6 +8,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import L from 'leaflet';
+import { GeoSearchControl, OpenStreetMapProvider } from 'leaflet-geosearch';
 
 const map = ref(null);
 const marker = ref(null);
@@ -108,6 +109,33 @@ const forwardGeocode = async (address) => {
     }
 };
 
+// Initialize the GeoSearch control
+const initializeGeoSearch = () => {
+    const provider = new OpenStreetMapProvider();
+
+    const searchControl = new GeoSearchControl({
+        provider,
+        style: 'bar',
+        autoComplete: true,
+        autoCompleteDelay: 250,
+        showMarker: false
+    });
+
+    map.value.addControl(searchControl);
+
+    map.value.on('geosearch/showlocation', (result) => {
+        const { x: longitude, y: latitude, label: address } = result.location;
+        const roundedLat = parseFloat(latitude.toFixed(6));
+        const roundedLng = parseFloat(longitude.toFixed(6));
+
+        emit('update:latitude', roundedLat);
+        emit('update:longitude', roundedLng);
+        emit('update:address', address);
+
+        setMarker(roundedLat, roundedLng);
+    });
+};
+
 // Watch for changes in latitude and longitude
 watch(
     () => [props.latitude, props.longitude],
@@ -139,6 +167,8 @@ onMounted(() => {
     if (props.latitude && props.longitude) {
         setMarker(props.latitude, props.longitude);
     }
+
+    initializeGeoSearch();
 });
 </script>
 

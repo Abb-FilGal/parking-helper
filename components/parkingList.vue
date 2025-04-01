@@ -5,12 +5,11 @@
     </ion-list-header>
     
     <ion-item v-for="spot in parkingSpots" :key="spot.id" @click="selectSpot(spot)">
-        <div slot="start" class="parking-thumbnail" v-if="spot.imageUrl">
-            <CloudinaryImage 
-                :src="spot.imageUrl" 
+        <div slot="start" class="parking-thumbnail" v-if="spot.firstImage">
+            <img 
+                :src="spot.firstImage" 
                 :alt="spot.name" 
-                :width="100" 
-                :height="100"
+                class="cloudinary-image"
             />
         </div>
         <ion-label>
@@ -31,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { 
   IonList, 
   IonListHeader, 
@@ -41,7 +40,9 @@ import {
   IonIcon 
 } from '@ionic/vue';
 import { navigateOutline } from 'ionicons/icons';
-import CloudinaryImage from './CloudinaryImage.vue';
+import { collection, getDocs } from 'firebase/firestore';
+import { useNuxtApp } from '#app';
+import { useCloudinaryService } from '~/services/cloudinaryService'; // Import Cloudinary service
 
 const props = defineProps({
   parkingSpots: {
@@ -51,6 +52,40 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['select-spot', 'navigate-to-spot']);
+
+const parkingSpots = ref([]);
+const isLoading = ref(true);
+
+const { getOptimizedUrl } = useCloudinaryService(); // Use the Cloudinary service
+
+const fetchParkingSpots = async () => {
+  const { $firestore } = useNuxtApp(); // Use Firestore instance from Nuxt plugin
+  const parkingSpotsCollection = collection($firestore, 'parkingSpots');
+
+  try {
+    const querySnapshot = await getDocs(parkingSpotsCollection);
+    parkingSpots.value = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        firstImage: data.imageUrls && data.imageUrls.length > 0
+          ? getOptimizedUrl(data.imageUrls[0], { width: 100, height: 100 }) // Use the Cloudinary service
+          : null
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching parking spots:', error);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+onMounted(async () => {
+  if (parkingSpots.value.length === 0) {
+    await fetchParkingSpots();
+  }
+});
 
 const selectSpot = (spot) => {
   emit('select-spot', spot);
@@ -67,5 +102,11 @@ const navigateToSpot = (spot) => {
   height: 60px;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.cloudinary-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

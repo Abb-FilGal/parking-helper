@@ -39,6 +39,7 @@ export default defineNuxtConfig({
 
   plugins: [
     "~/plugins/firebase.client.ts",
+    "~/plugins/cloudinary.client.ts",
   ],
 
   compatibilityDate: "2025-03-25",

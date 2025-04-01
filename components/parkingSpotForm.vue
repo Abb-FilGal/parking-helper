@@ -7,6 +7,12 @@
         </ion-item>
         
         <ion-item>
+            <ion-label position="floating">Search Address</ion-label>
+            <ion-input v-model="searchQuery" placeholder="Search for an address"></ion-input>
+            <ion-button @click="handleSearch">Search</ion-button>
+        </ion-item>
+
+        <ion-item>
             <ion-label position="floating">Address</ion-label>
             <ion-input v-model="form.address" required></ion-input>
         </ion-item>
@@ -106,11 +112,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { cameraOutline, closeCircleOutline } from 'ionicons/icons';
 import { useCloudinaryService } from '~/services/cloudinaryService';
 import { collection, doc, addDoc, updateDoc, GeoPoint } from 'firebase/firestore';
 import { useNuxtApp } from '#app';
+import { OpenStreetMapProvider } from 'leaflet-geosearch';
 import Map from '~/components/Map.vue';
 
 const props = defineProps({
@@ -161,6 +168,29 @@ onMounted(() => {
         });
     }
 });
+
+// Watch for changes in the address to suggest a name
+watch(
+    () => form.address,
+    (newAddress) => {
+        if (newAddress && !form.name) {
+            // Suggest a name based on the address
+            const suggestedName = suggestNameFromAddress(newAddress);
+            form.name = suggestedName;
+        }
+    }
+);
+
+// Function to suggest a name based on the address
+const suggestNameFromAddress = (address) => {
+    // Split the address into parts (e.g., "123 Main St, City, Country")
+    const parts = address.split(',');
+    if (parts.length > 0) {
+        // Use the first part of the address (e.g., "123 Main St")
+        return parts[0].trim();
+    }
+    return 'Unnamed Parking Spot';
+};
 
 // Tags input and methods
 const tagsInput = ref('');
@@ -260,6 +290,28 @@ const handleSubmit = async () => {
         console.error('Error submitting form:', error);
     } finally {
         isSubmitting.value = false;
+    }
+};
+
+// Search functionality
+const provider = new OpenStreetMapProvider();
+const searchQuery = ref('');
+
+const handleSearch = async () => {
+    if (!searchQuery.value) return;
+
+    try {
+        const results = await provider.search({ query: searchQuery.value });
+        if (results.length > 0) {
+            const { x: longitude, y: latitude, label: address } = results[0];
+            form.latitude = parseFloat(latitude.toFixed(6));
+            form.longitude = parseFloat(longitude.toFixed(6));
+            form.address = address;
+        } else {
+            alert('No results found for the given address.');
+        }
+    } catch (error) {
+        console.error('Error during search:', error);
     }
 };
 </script>
