@@ -9,6 +9,7 @@
 import { ref, watch, onMounted } from 'vue';
 import L from 'leaflet';
 import { GeoSearchControl, OpenStreetMapProvider } from 'leaflet-geosearch';
+import { setCache, getCache } from '~/services/cacheService';
 
 const map = ref(null);
 const marker = ref(null);
@@ -77,12 +78,24 @@ const setMarker = (latitude, longitude) => {
 
 // Reverse geocoding to get the address from latitude and longitude
 const reverseGeocode = async (latitude, longitude) => {
+    const cacheKey = `reverse-${latitude}-${longitude}`;
+    const cachedAddress = getCache(cacheKey);
+
+    if (cachedAddress) {
+        emit('update:address', cachedAddress);
+        return;
+    }
+
     try {
         const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
         );
         const data = await response.json();
         const address = data.display_name || 'Unknown address';
+
+        // Cache the result
+        setCache(cacheKey, address);
+
         emit('update:address', address);
     } catch (error) {
         console.error('Error reverse geocoding:', error);
@@ -91,6 +104,17 @@ const reverseGeocode = async (latitude, longitude) => {
 
 // Forward geocoding to get latitude and longitude from an address
 const forwardGeocode = async (address) => {
+    const cacheKey = `forward-${address}`;
+    const cachedCoords = getCache(cacheKey);
+
+    if (cachedCoords) {
+        const { lat, lon } = cachedCoords;
+        emit('update:latitude', lat);
+        emit('update:longitude', lon);
+        setMarker(lat, lon);
+        return;
+    }
+
     try {
         const response = await fetch(
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
@@ -98,9 +122,15 @@ const forwardGeocode = async (address) => {
         const data = await response.json();
         if (data.length > 0) {
             const { lat, lon } = data[0];
-            emit('update:latitude', parseFloat(lat.toFixed(6)));
-            emit('update:longitude', parseFloat(lon.toFixed(6)));
-            setMarker(parseFloat(lat.toFixed(6)), parseFloat(lon.toFixed(6)));
+            const roundedLat = parseFloat(lat.toFixed(6));
+            const roundedLng = parseFloat(lon.toFixed(6));
+
+            // Cache the result
+            setCache(cacheKey, { lat: roundedLat, lon: roundedLng });
+
+            emit('update:latitude', roundedLat);
+            emit('update:longitude', roundedLng);
+            setMarker(roundedLat, roundedLng);
         } else {
             alert('Address not found.');
         }

@@ -43,6 +43,7 @@ import { navigateOutline } from 'ionicons/icons';
 import { collection, getDocs } from 'firebase/firestore';
 import { useNuxtApp } from '#app';
 import { useCloudinaryService } from '~/services/cloudinaryService'; // Import Cloudinary service
+import { setCache, getCache } from '~/services/cacheService'; // Import cache service
 
 const props = defineProps({
   parkingSpots: {
@@ -59,26 +60,40 @@ const isLoading = ref(true);
 const { getOptimizedUrl } = useCloudinaryService(); // Use the Cloudinary service
 
 const fetchParkingSpots = async () => {
-  const { $firestore } = useNuxtApp(); // Use Firestore instance from Nuxt plugin
-  const parkingSpotsCollection = collection($firestore, 'parkingSpots');
+    const cacheKey = 'parkingSpots';
+    const cachedSpots = getCache(cacheKey);
 
-  try {
-    const querySnapshot = await getDocs(parkingSpotsCollection);
-    parkingSpots.value = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        firstImage: data.imageUrls && data.imageUrls.length > 0
-          ? getOptimizedUrl(data.imageUrls[0], { width: 100, height: 100 }) // Use the Cloudinary service
-          : null
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching parking spots:', error);
-  } finally {
-    isLoading.value = false;
-  }
+    if (cachedSpots) {
+        parkingSpots.value = cachedSpots;
+        isLoading.value = false;
+        return;
+    }
+
+    const { $firestore } = useNuxtApp();
+    const parkingSpotsCollection = collection($firestore, 'parkingSpots');
+
+    try {
+        const querySnapshot = await getDocs(parkingSpotsCollection);
+        const spots = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                firstImage: data.imageUrls && data.imageUrls.length > 0
+                    ? getOptimizedUrl(data.imageUrls[0], { width: 100, height: 100 })
+                    : null
+            };
+        });
+
+        // Cache the result
+        setCache(cacheKey, spots);
+
+        parkingSpots.value = spots;
+    } catch (error) {
+        console.error('Error fetching parking spots:', error);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 onMounted(async () => {
