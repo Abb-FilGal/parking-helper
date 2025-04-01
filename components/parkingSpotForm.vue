@@ -46,12 +46,24 @@
 
         <ion-item>
             <ion-label position="floating">Latitude</ion-label>
-            <ion-input v-model.number="form.latitude" type="number" step="0.000001" required></ion-input>
+            <ion-input 
+            v-model.number="form.latitude" 
+            type="number" 
+            step="0.000001" 
+            required 
+            @input="form.latitude = parseFloat(form.latitude.toFixed(6))"
+            ></ion-input>
         </ion-item>
         
         <ion-item>
             <ion-label position="floating">Longitude</ion-label>
-            <ion-input v-model.number="form.longitude" type="number" step="0.000001" required></ion-input>
+            <ion-input 
+            v-model.number="form.longitude" 
+            type="number" 
+            step="0.000001" 
+            required 
+            @input="form.longitude = parseFloat(form.longitude.toFixed(6))"
+            ></ion-input>
         </ion-item>
         
         <div class="image-upload-container">
@@ -218,11 +230,15 @@ const handleSubmit = async () => {
             }
         }
 
+        // Round latitude and longitude to 6 decimal places
+        const roundedLatitude = parseFloat(form.latitude.toFixed(6));
+        const roundedLongitude = parseFloat(form.longitude.toFixed(6));
+
         // Create the final parking spot object
         const parkingSpot = {
             ...form,
             imageUrls: uploadedImageUrls, // Store all uploaded image URLs
-            location: new GeoPoint(form.latitude, form.longitude)
+            location: new GeoPoint(roundedLatitude, roundedLongitude)
         };
 
         delete parkingSpot.latitude; // Remove latitude and longitude from the object

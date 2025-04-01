@@ -39,10 +39,12 @@ const getUserLocation = () => {
     navigator.geolocation.getCurrentPosition(
         async (position) => {
             const { latitude, longitude } = position.coords;
-            emit('update:latitude', latitude);
-            emit('update:longitude', longitude);
-            setMarker(latitude, longitude);
-            await reverseGeocode(latitude, longitude);
+            const roundedLat = parseFloat(latitude.toFixed(6)); // Round to 6 decimals
+            const roundedLng = parseFloat(longitude.toFixed(6)); // Round to 6 decimals
+            emit('update:latitude', roundedLat);
+            emit('update:longitude', roundedLng);
+            setMarker(roundedLat, roundedLng); // Pass rounded values to setMarker
+            await reverseGeocode(roundedLat, roundedLng); // Pass rounded values to reverseGeocode
         },
         (error) => {
             console.error('Error getting location:', error);
@@ -53,18 +55,23 @@ const getUserLocation = () => {
 
 // Function to set the marker on the map
 const setMarker = (latitude, longitude) => {
+    const roundedLat = parseFloat(latitude.toFixed(6));
+    const roundedLng = parseFloat(longitude.toFixed(6));
+
     if (marker.value) {
-        marker.value.setLatLng([latitude, longitude]);
+        marker.value.setLatLng([roundedLat, roundedLng]);
     } else {
-        marker.value = L.marker([latitude, longitude], { draggable: true }).addTo(map.value);
+        marker.value = L.marker([roundedLat, roundedLng], { draggable: true }).addTo(map.value);
         marker.value.on('dragend', async (e) => {
             const { lat, lng } = e.target.getLatLng();
-            emit('update:latitude', lat);
-            emit('update:longitude', lng);
-            await reverseGeocode(lat, lng);
+            const roundedLat = parseFloat(lat.toFixed(6));
+            const roundedLng = parseFloat(lng.toFixed(6));
+            emit('update:latitude', roundedLat);
+            emit('update:longitude', roundedLng);
+            await reverseGeocode(roundedLat, roundedLng);
         });
     }
-    map.value.setView([latitude, longitude], 15);
+    map.value.setView([roundedLat, roundedLng], 15);
 };
 
 // Reverse geocoding to get the address from latitude and longitude
@@ -90,9 +97,9 @@ const forwardGeocode = async (address) => {
         const data = await response.json();
         if (data.length > 0) {
             const { lat, lon } = data[0];
-            emit('update:latitude', parseFloat(lat));
-            emit('update:longitude', parseFloat(lon));
-            setMarker(parseFloat(lat), parseFloat(lon));
+            emit('update:latitude', parseFloat(lat.toFixed(6)));
+            emit('update:longitude', parseFloat(lon.toFixed(6)));
+            setMarker(parseFloat(lat.toFixed(6)), parseFloat(lon.toFixed(6)));
         } else {
             alert('Address not found.');
         }
