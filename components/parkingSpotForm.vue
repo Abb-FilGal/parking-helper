@@ -119,6 +119,7 @@ import { collection, doc, addDoc, updateDoc, GeoPoint } from 'firebase/firestore
 import { useNuxtApp } from '#app';
 import { OpenStreetMapProvider } from 'leaflet-geosearch';
 import Map from '~/components/Map.vue';
+import { clearCache } from '~/services/cacheService';
 
 const props = defineProps({
     parkingSpot: {
@@ -284,7 +285,11 @@ const handleSubmit = async () => {
             await addDoc(parkingSpotsCollection, parkingSpot);
         }
 
-        emit('submit', parkingSpot);
+        // Clear the cache for parking spots
+        clearCache('parkingSpots');
+
+        emit('form-submitted'); // Emit the event after successful submission
+        resetForm(); // Reset the form fields
         console.log('Form submitted:', parkingSpot);
     } catch (error) {
         console.error('Error submitting form:', error);
@@ -313,6 +318,17 @@ const handleSearch = async () => {
     } catch (error) {
         console.error('Error during search:', error);
     }
+};
+
+const resetForm = () => {
+    form.name = '';
+    form.address = '';
+    form.tags = [];
+    form.pricePerHour = '';
+    form.latitude = 0;
+    form.longitude = 0;
+    form.imageUrls = [];
+    searchQuery.value = '';
 };
 </script>
 

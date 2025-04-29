@@ -3,5 +3,13 @@
   "extends": "./.nuxt/tsconfig.json",
   "exclude": [
     "plugins/firebase.vue"
-  ]
+  ],
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "types": [
+      "swiper",
+      "nuxt",
+      "node",
+    ]
+  }
 }

@@ -4,11 +4,11 @@
         <ion-label>Available Parking Spots</ion-label>
     </ion-list-header>
     
-    <ion-item v-for="spot in parkingSpots" :key="spot.id" @click="selectSpot(spot)">
-        <div slot="start" class="parking-thumbnail" v-if="spot.firstImage">
+    <ion-item v-for="spot in parkingSpots" :key="spot.id" @click="openParkingSpotPopup(spot)">
+        <div slot="start" class="parking-thumbnail">
             <img 
-                :src="spot.firstImage" 
-                :alt="spot.name" 
+                :src="spot.imageUrls?.[0] || 'https://res.cloudinary.com/dxlumukjr/image/upload/v1744094822/ChatGPT_Image_Apr_8_2025_08_46_38_AM_gsojdh.png'" 
+                :alt="spot.name || 'Parking Spot'" 
                 class="cloudinary-image"
             />
         </div>
@@ -26,88 +26,44 @@
     <ion-item v-if="parkingSpots.length === 0">
         <ion-label>No parking spots available</ion-label>
     </ion-item>
+
+    <!-- Modal for Parking Spot -->
+    <ion-modal :is-open="isModalOpen" @didDismiss="closeModal" class="custom-modal">
+        <parking-spot :spot="selectedSpot" @close="closeModal" />
+    </ion-modal>
 </ion-list>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { 
-  IonList, 
-  IonListHeader, 
-  IonItem, 
-  IonLabel, 
-  IonButton, 
-  IonIcon 
-} from '@ionic/vue';
-import { navigateOutline } from 'ionicons/icons';
-import { collection, getDocs } from 'firebase/firestore';
-import { useNuxtApp } from '#app';
-import { useCloudinaryService } from '~/services/cloudinaryService'; // Import Cloudinary service
-import { setCache, getCache } from '~/services/cacheService'; // Import cache service
+import { useParkingSpots } from '~/composables/useParkingSpots';
+import ParkingSpot from './parkingSpot.vue'; // Import the parkingSpot component
 
-const props = defineProps({
-  parkingSpots: {
-    type: Array,
-    default: () => []
-  }
-});
+const { parkingSpots, isLoading, fetchParkingSpots } = useParkingSpots();
 
-const emit = defineEmits(['select-spot', 'navigate-to-spot']);
-
-const parkingSpots = ref([]);
-const isLoading = ref(true);
-
-const { getOptimizedUrl } = useCloudinaryService(); // Use the Cloudinary service
-
-const fetchParkingSpots = async () => {
-    const cacheKey = 'parkingSpots';
-    const cachedSpots = getCache(cacheKey);
-
-    if (cachedSpots) {
-        parkingSpots.value = cachedSpots;
-        isLoading.value = false;
-        return;
-    }
-
-    const { $firestore } = useNuxtApp();
-    const parkingSpotsCollection = collection($firestore, 'parkingSpots');
-
-    try {
-        const querySnapshot = await getDocs(parkingSpotsCollection);
-        const spots = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                firstImage: data.imageUrls && data.imageUrls.length > 0
-                    ? getOptimizedUrl(data.imageUrls[0], { width: 100, height: 100 })
-                    : null
-            };
-        });
-
-        // Cache the result
-        setCache(cacheKey, spots);
-
-        parkingSpots.value = spots;
-    } catch (error) {
-        console.error('Error fetching parking spots:', error);
-    } finally {
-        isLoading.value = false;
-    }
-};
+const isModalOpen = ref(false); // Track modal state
+const selectedSpot = ref(null); // Track the selected parking spot
 
 onMounted(async () => {
-  if (parkingSpots.value.length === 0) {
-    await fetchParkingSpots();
-  }
+    if (parkingSpots.value.length === 0) {
+        await fetchParkingSpots();
+    }
 });
 
-const selectSpot = (spot) => {
-  emit('select-spot', spot);
+const openParkingSpotPopup = (spot) => {
+    console.log('Selected spot:', spot); // Debug log
+    console.log('Spot image:', spot.imageUrls?.[0]); // Debug log for image
+    selectedSpot.value = spot; // Set the selected spot
+    isModalOpen.value = true; // Open the modal
+};
+
+const closeModal = () => {
+    isModalOpen.value = false; // Close the modal
+    selectedSpot.value = null; // Clear the selected spot
 };
 
 const navigateToSpot = (spot) => {
-  emit('navigate-to-spot', spot);
+    emit('navigate-to-spot', spot);
 };
 </script>
 
@@ -123,5 +79,22 @@ const navigateToSpot = (spot) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.custom-modal {
+    --width: 90%; /* Set the modal width to 90% of the viewport width */
+    --height: 80%; /* Set the modal height to 80% of the viewport height */
+    --margin-top: auto; /* Center the modal vertically */
+    --margin-bottom: auto; /* Center the modal vertically */
+    --border-radius: 12px; /* Optional: Add rounded corners */
+    --box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); /* Optional: Add a shadow */
+}
+
+.custom-modal ion-content {
+    padding: 16px; /* Add padding to the modal content */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
 }
 </style>

@@ -10,17 +10,26 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@capacitor/cli": "^7.1.0",
-    "@capacitor/core": "^7.1.0",
+    "@capacitor/cli": "^7.2.0",
+    "@capacitor/core": "^5.7.8",
     "@capacitor/ios": "^7.1.0",
+    "@ionic/core": "^8.5.1",
     "@nuxtjs/ionic": "^0.18.0",
+    "axios": "^1.8.4",
     "cloudinary": "^2.6.0",
     "cloudinary-core": "^2.13.1",
     "firebase": "^11.5.0",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.2.0",
+    "leaflet.markercluster": "^1.5.3",
     "nuxt": "^3.16.1",
+    "swiper": "^9.4.1",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@nuxt/types": "^2.18.1",
+    "@types/node": "^22.15.3",
+    "@types/swiper": "^5.4.3"
   }
 }

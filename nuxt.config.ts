@@ -44,5 +44,30 @@ export default defineNuxtConfig({
 
   compatibilityDate: "2025-03-25",
 
-  css: ['leaflet/dist/leaflet.css']
+  css: [
+    'leaflet/dist/leaflet.css',
+    'swiper/swiper.min.css', // Correct Swiper CSS path
+    '@ionic/vue/css/core.css', // Ionic core styles
+    '@ionic/vue/css/normalize.css',
+    '@ionic/vue/css/structure.css',
+    '@ionic/vue/css/typography.css',
+  ],
+
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: '', // Remove Swiper import here
+        },
+      },
+    },
+    build: {
+      rollupOptions: {
+        external: [
+          '@ionic/core/components/ion-accordion.js',
+          '@ionic/core/components/capacitor.js',
+        ],
+      },
+    },
+  },
 })

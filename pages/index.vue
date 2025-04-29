@@ -10,9 +10,20 @@
       <h1>Welcome to Parking Finder</h1>
       <p>Find available parking spots near you!</p>
       
-      <!-- <Map class="my-4" /> -->
-      <parkingList class="my-4" :parkingSpots="mockParkingSpots" />
-      <parkingSpotForm class="my-4" />
+      <Map 
+        class="my-4" 
+        :latitude="defaultLatitude" 
+        :longitude="defaultLongitude" 
+        :address="defaultAddress" 
+        :parkingSpots="parkingSpots"
+      />
+      <ParkingList ref="parkingList" :parkingSpots="parkingSpots" />
+      <ParkingSpotForm 
+        class="my-4" 
+        @form-submitted="reloadParkingSpots" 
+        :isEditing="isEditing" 
+        :parkingSpot="selectedSpot"
+      />
       
       <ion-button expand="block" @click="testFirebase">
         Test Firebase Connection
@@ -31,15 +42,16 @@ import {
   IonButton 
 } from '@ionic/vue';
 import { collection, getDocs } from 'firebase/firestore';
-import Map from '~/components/Map.vue'
-import parkingList from '~/components/parkingList.vue';
-import parkingSpotForm from '~/components/parkingSpotForm.vue';
+import { ref } from 'vue';
+import Map from '~/components/Map.vue';
+import ParkingList from '/components/parkingList.vue';
+import ParkingSpotForm from '/components/parkingSpotForm.vue';
+import { useParkingSpots } from '~/composables/useParkingSpots';
 
 const { $firestore } = useNuxtApp();
 
 const testFirebase = async () => {
   try {
-    // This will fail if the collection doesn't exist, but it tests the connection
     const querySnapshot = await getDocs(collection($firestore, 'test-collection'));
     console.log('Firebase connection successful!');
     console.log('Documents:', querySnapshot.docs.length);
@@ -82,5 +94,23 @@ const mockParkingSpots = [
     }
 ];
 
-</script>
+const isEditing = ref(false);
+const selectedSpot = ref(null);
 
+const { fetchParkingSpots } = useParkingSpots();
+
+const reloadParkingSpots = async () => {
+    console.debug('[Parent] Reloading parking spots');
+    await fetchParkingSpots();
+};
+
+const defaultLatitude = 59.3293; // Example latitude
+const defaultLongitude = 18.0686; // Example longitude
+const defaultAddress = 'Stockholm, Sweden';
+
+const parkingSpots = ref([
+    { name: 'Spot 1', address: '123 Main St', latitude: 59.3293, longitude: 18.0686 },
+    { name: 'Spot 2', address: '456 Elm St', latitude: 59.3285, longitude: 18.0700 },
+    { name: 'Spot 3', address: '789 Oak St', latitude: 59.3300, longitude: 18.0670 }
+]);
+</script>
