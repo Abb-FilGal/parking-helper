@@ -1,7 +1,7 @@
 <template>
     <div class="map-container">
         <div id="map" class="map"></div>
-        <ion-button expand="block" @click="getUserLocation">Use My Location</ion-button>
+        <!-- <ion-button expand="block" @click="getUserLocation">Use My Location</ion-button> -->
     </div>
 </template>
 

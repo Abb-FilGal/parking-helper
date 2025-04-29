@@ -69,5 +69,8 @@ export default defineNuxtConfig({
         ],
       },
     },
+    optimizeDeps: {
+      include: ['fuse.js'], // Ensure Fuse.js is pre-bundled
+    },
   },
 })
