@@ -6,14 +6,14 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import L from 'leaflet';
-import { GeoSearchControl, OpenStreetMapProvider } from 'leaflet-geosearch';
 import { useParkingSpots } from '~/composables/useParkingSpots';
 import 'leaflet.markercluster';
 
 const map = ref(null);
 let markerClusterGroup = null;
+const userMarker = ref(null); // Store the user marker as a reactive reference
 
 const props = defineProps({
     latitude: {
@@ -36,6 +36,7 @@ const emit = defineEmits(['update:latitude', 'update:longitude', 'update:address
 const { parkingSpots, fetchParkingSpots } = useParkingSpots();
 
 const addParkingSpotMarkers = (spots) => {
+    console.log('Adding parking spot markers:', spots); // Debug log
     if (!map.value || !markerClusterGroup) {
         console.warn('Map or markerClusterGroup is not initialized.');
         return;
@@ -49,7 +50,7 @@ const addParkingSpotMarkers = (spots) => {
     const markers = spots
         .filter(spot => {
             // Validate that the spot has a valid location with latitude and longitude
-            if (!spot.location || !spot.location.latitude || !spot.location.longitude) {
+            if (!spot.location.latitude || !spot.location.longitude) {
                 console.warn('Invalid parking spot location:', spot);
                 return false;
             }
@@ -63,20 +64,8 @@ const addParkingSpotMarkers = (spots) => {
             marker.bindPopup(`
                 <b>${spot.name}</b><br>
                 ${spot.address}<br>
-                <img src="${spot.firstImage}" alt="${spot.name}" style="width: 100px; height: auto;" />
+                <img src="${spot.imageUrls?.[0] || 'https://via.placeholder.com/100'}" alt="${spot.name}" style="width: 100px; height: auto;" />
             `);
-
-            // Add a click event to zoom into the marker and keep it centered
-            marker.on('click', () => {
-                map.value.flyTo([spot.location.latitude, spot.location.longitude], 15, {
-                    duration: 1.5, // Smooth animation duration in seconds
-                });
-
-                // Reopen the popup after the flyTo animation completes
-                setTimeout(() => {
-                    marker.openPopup();
-                }, 1500); // Match the duration of the flyTo animation
-            });
 
             return marker;
         });
@@ -93,20 +82,23 @@ const getUserLocation = () => {
                 const { latitude, longitude } = position.coords;
                 console.log('User location:', latitude, longitude); // Debug log
 
-                // Center the map on the user's location
-                map.value.setView([latitude, longitude], 13);
+                // Center the map on the user's location only if it's the first time
+                if (!userMarker.value) {
+                    map.value.setView([latitude, longitude], 13);
+                }
 
-                // Add a marker for the user's location
-                const userMarker = L.marker([latitude, longitude], {
-                    icon: L.divIcon({
-                        html: `<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
-                        className: '', // No additional class needed
-                        iconSize: [20, 20] // Size of the marker
-                    })
-                }).addTo(map.value);
-
-                // Optionally bind a popup to the user's location marker
-                // userMarker.bindPopup('You are here!').openPopup();
+                // Update or create the user marker
+                if (userMarker.value) {
+                    userMarker.value.setLatLng([latitude, longitude]); // Update marker position
+                } else {
+                    userMarker.value = L.marker([latitude, longitude], {
+                        icon: L.divIcon({
+                            html: `<div style="background-color: red; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>`,
+                            className: '', // No additional class needed
+                            iconSize: [20, 20] // Size of the marker
+                        })
+                    }).addTo(map.value);
+                }
 
                 // Emit the user's location
                 emit('update:latitude', latitude);
@@ -114,40 +106,13 @@ const getUserLocation = () => {
             },
             (error) => {
                 console.error('Error getting user location:', error);
-
-                // Fallback to default location
-                const fallbackLatitude = props.latitude || 59.3293;
-                const fallbackLongitude = props.longitude || 18.0686;
-
-                map.value.setView([fallbackLatitude, fallbackLongitude], 10);
-
-                L.marker([fallbackLatitude, fallbackLongitude], {
-                    icon: L.divIcon({
-                        html: `<div class="user-location-marker"></div>`,
-                        className: '',
-                        iconSize: [20, 20]
-                    })
-                }).addTo(map.value).bindPopup('Default location: Unable to get user location').openPopup();
             }
         );
     } else {
         console.warn('Geolocation is not supported by this browser.');
-
-        // Fallback to default location
-        const fallbackLatitude = props.latitude || 59.3293;
-        const fallbackLongitude = props.longitude || 18.0686;
-
-        map.value.setView([fallbackLatitude, fallbackLongitude], 10);
-
-        L.marker([fallbackLatitude, fallbackLongitude], {
-            icon: L.divIcon({
-                html: `<div class="user-location-marker"></div>`,
-                className: '',
-                iconSize: [20, 20]
-            })
-        }).addTo(map.value).bindPopup('Default location: Unable to get user location').openPopup();
     }
 };
+
 onMounted(async () => {
     if (!map.value) {
         map.value = L.map('map').setView([props.latitude, props.longitude], 10);
@@ -173,21 +138,20 @@ onMounted(async () => {
         map.value.addLayer(markerClusterGroup);
 
         // Fetch parking spots and add markers
-        await fetchParkingSpots();
-        console.log('Fetched parking spots:', parkingSpots.value); // Debug log
-        addParkingSpotMarkers(parkingSpots.value);
+        try {
+            await fetchParkingSpots();
+            if (Array.isArray(parkingSpots.value) && parkingSpots.value.length > 0) {
+                console.log('Fetched parking spots:', parkingSpots.value); // Debug log
+                addParkingSpotMarkers(parkingSpots.value); // Add all parking spots to the map
+            } else {
+                console.log('No parking spots fetched or available.');
+            }
+        } catch (error) {
+            console.error('Error fetching parking spots:', error);
+        }
 
         // Use the user's location as the default center
         getUserLocation();
-
-        map.value.on('moveend', () => {
-            const bounds = map.value.getBounds();
-            const visibleSpots = parkingSpots.value.filter(spot =>
-                spot.location &&
-                bounds.contains([spot.location.latitude, spot.location.longitude])
-            );
-            addParkingSpotMarkers(visibleSpots);
-        });
 
         // Ensure the map resizes correctly
         setTimeout(() => {

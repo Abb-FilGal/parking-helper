@@ -14,7 +14,7 @@ export const useParkingSpots = () => {
             const cacheKey = 'parkingSpots';
             const cachedSpots = getCache(cacheKey);
 
-            if (cachedSpots) {
+            if (cachedSpots && cachedSpots.length > 0) {
                 console.debug('[ParkingList] Using cached parking spots');
                 parkingSpots.value = cachedSpots;
                 return;

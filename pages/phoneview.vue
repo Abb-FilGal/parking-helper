@@ -11,10 +11,24 @@
       <SearchParkingSpots @filters-applied="handleFiltersApplied" />
 
       <!-- Map Component -->
-      <Map/>
+      <Map 
+        class="my-4" 
+        :latitude="defaultLatitude" 
+        :longitude="defaultLongitude" 
+        :address="defaultAddress" 
+        :parkingSpots="parkingSpots"
+      />
 
       <!-- Parking List Component -->
       <ParkingList :parkingSpots="filteredParkingSpots" />
+
+      <!-- Parking Spot Form Component -->
+      <ParkingSpotForm 
+        class="my-4" 
+        @form-submitted="reloadParkingSpots" 
+        :isEditing="isEditing" 
+        :parkingSpot="selectedSpot"
+      />
     </ion-content>
   </ion-page>
 </template>
